@@ -4,10 +4,10 @@
     let { activeTab = 'files', projectPath = '' } = $props();
 </script>
 
-<div class="bg-sidebar-background border-r border-gray-700 w-64 flex flex-col overflow-hidden">
+<div class="bg-background border-r border-border w-auto flex flex-col h-full overflow-hidden">
     {#if activeTab === 'files'}
-        <div class="p-4 border-b border-gray-700">
-            <h2 class="text-sm font-semibold text-white">Project</h2>
+        <div class="p-4 border-b border-border">
+            <h2 class="text-sm font-medium text-white">{projectPath}</h2>
         </div>
         <div class="p-4 flex-1 overflow-auto">
             <FileTree path={projectPath} />

@@ -11,6 +11,7 @@
         path: string;
         isDirectory: boolean;
         children?: FileTreeEntry[];
+				isOpen: boolean;
     }
 
 		const ignoredFolders = new Set([
@@ -46,6 +47,7 @@
                         path: fullPath,
                         isDirectory: true,
                         children: children,
+												isOpen: false
                     });
                 } else {
                     entries.push({
@@ -75,11 +77,11 @@
 </script>
 
 <div class="">
-    <TreeView.Root>
-        {#if fileTree.length > 0}
-            <FileTreeNode entries={fileTree} />
-        {:else}
-            <p>Loading file tree...</p>
-        {/if}
-    </TreeView.Root>
+		<TreeView.Root>
+				{#if fileTree.length > 0}
+						<FileTreeNode entries={fileTree} />
+				{:else}
+						<p>Loading file tree...</p>
+				{/if}
+		</TreeView.Root>
 </div>

@@ -4,6 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('/fonts/jetbrains-mono/JetBrainsMono[wght].ttf') format('truetype');
+    font-weight: 100 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('/fonts/jetbrains-mono/JetBrainsMono-Italic[wght].ttf') format('truetype');
+    font-weight: 100 800;
+    font-style: italic;
+    font-display: swap;
+}
+
 :root {
     --background: oklch(0.9900 0 0);
     --foreground: oklch(0 0 0);

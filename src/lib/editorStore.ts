@@ -5,6 +5,7 @@ export interface OpenTab {
 	path: string;
 	name: string;
 	isDirty: boolean;
+	scrollPosition?: { lineNumber: number; column: number };
 }
 
 function createEditorStore() {
@@ -62,6 +63,21 @@ function createEditorStore() {
 			update((state) => ({
 				...state,
 				tabs: state.tabs.map((t) => (t.id === id ? { ...t, isDirty } : t)),
+			})),
+		setTabScrollPosition: (
+			id: string,
+			position: { lineNumber: number; column: number }
+		) =>
+			update((state) => ({
+				...state,
+				tabs: state.tabs.map((t) =>
+					t.id === id ? { ...t, scrollPosition: position } : t
+				),
+			})),
+		reorderTabsList: (tabs: OpenTab[]) =>
+			update((state) => ({
+				...state,
+				tabs,
 			})),
 		clear: () => set({ tabs: [], activeTabId: null }),
 	};

@@ -10,7 +10,7 @@
     }
 </script>
 
-<div class="flex flex-col items-center gap-1 bg-sidebar-background border-r border-gray-700 p-1">
+<div class="flex flex-col items-center gap-1 bg-background border-r border-border p-1">
     <Button variant="ghost" size="icon" onclick={() => (activeTab = 'files')}>
         <FileText/>
     </Button>

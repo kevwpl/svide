@@ -11,6 +11,6 @@
 	});
 </script>
 
-<div class="flex flex-col h-full bg-gray-950 overflow-hidden">
+<div class="flex flex-col h-full w-full bg-gray-950 overflow-hidden">
 	<Editor activeTabId={editorState.activeTabId} />
 </div>

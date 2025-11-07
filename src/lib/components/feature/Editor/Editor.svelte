@@ -1,19 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 	import { editorStore } from '$lib/editorStore';
 	import EditorTabs from './EditorTabs.svelte';
-
-	import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-	import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
-	import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
-	import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
-	import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+	import { initializeMonaco, createEditor } from '$lib/monacoSetup';
+	import { loadFile, saveFile } from '$lib/fileOperations';
+	import { setupShortcuts } from '$lib/shortcuts';
 
 	let editorContainer: HTMLDivElement;
 	let editor: any = $state(null);
 	let monaco: any = null;
 	let currentPath = $state<string | null>(null);
+	let shortcuts: any = null;
+
+    function ensureFontsLoaded(callback) {
+        document.fonts.ready.then(() => {
+                monaco.editor.remeasureFonts();
+                callback();
+        });
+    }
 
 	const state = $derived($editorStore);
 	const activeTab = $derived(
@@ -22,45 +26,62 @@
 
 	$effect(() => {
 		if (activeTab && editor && activeTab.path !== currentPath) {
-			loadFile(activeTab.path);
+			saveCurrentScrollPosition();
+			handleLoadFile(activeTab.path);
 		}
 	});
 
-	onMount(async () => {
-		self.MonacoEnvironment = {
-			getWorker(_: string, label: string) {
-				switch (label) {
-					case 'json':
-						return new jsonWorker();
-					case 'css':
-					case 'scss':
-					case 'less':
-						return new cssWorker();
-					case 'html':
-					case 'handlebars':
-					case 'razor':
-						return new htmlWorker();
-					case 'typescript':
-					case 'javascript':
-						return new tsWorker();
-					default:
-						return new editorWorker();
+	function saveCurrentScrollPosition() {
+		if (!editor || !currentPath) return;
+
+		const position = editor.getPosition();
+		if (position) {
+			const currentTab = state.tabs.find((t) => t.path === currentPath);
+			if (currentTab) {
+				editorStore.setTabScrollPosition(currentTab.id, {
+					lineNumber: position.lineNumber,
+					column: position.column,
+				});
+			}
+		}
+	}
+
+	async function handleLoadFile(path: string) {
+		if (!editor) return;
+
+		try {
+			await loadFile(editor, monaco, path);
+			currentPath = path;
+
+			if (state.activeTabId) {
+				editorStore.setTabDirty(state.activeTabId, false);
+
+				const tab = state.tabs.find((t) => t.id === state.activeTabId);
+				if (tab?.scrollPosition) {
+					editor.setPosition(tab.scrollPosition);
+					editor.revealPositionInCenter(tab.scrollPosition);
 				}
-			},
-		};
+			}
+		} catch (error) {
+			console.error(`Error loading file ${path}:`, error);
+		}
+	}
 
-		const monacoModule = await import('monaco-editor');
-		monaco = monacoModule.default || monacoModule;
+	async function handleSaveFile() {
+		if (!editor || !activeTab) return;
 
-		editor = monaco.editor.create(editorContainer, {
-			value: '',
-			language: 'typescript',
-			theme: 'vs-dark',
-			automaticLayout: true,
-			minimap: { enabled: false },
-			fontSize: 14,
-			fontFamily: 'Fira Code, Consolas, monospace',
-		});
+		try {
+			const content = editor.getValue();
+			await saveFile(activeTab.path, content);
+			editorStore.setTabDirty(activeTab.id, false);
+		} catch (error) {
+			console.error(`Error saving file:`, error);
+		}
+	}
+
+	onMount(async () => {
+		monaco = await initializeMonaco();
+		editor = createEditor(editorContainer, monaco);
 
 		editor.onDidChangeModelContent(() => {
 			if (state.activeTabId && currentPath) {
@@ -68,99 +89,19 @@
 			}
 		});
 
-		return () => editor?.dispose();
-	});
+		shortcuts = setupShortcuts();
+		shortcuts.register(['Control', 's'], () => handleSaveFile());
 
-	async function loadFile(path: string) {
-		if (!editor) return;
-
-		try {
-			const content = await readTextFile(path);
-			const language = getLanguageFromPath(path);
-			const model = editor.getModel();
-
-			if (model && monaco) {
-				monaco.editor.setModelLanguage(model, language);
-			}
-
-			editor.setValue(content);
-			currentPath = path;
-
-			if (state.activeTabId) {
-				editorStore.setTabDirty(state.activeTabId, false);
-			}
-		} catch (error) {
-			console.error(`Error loading file ${path}:`, error);
-		}
-	}
-
-	async function saveFile() {
-		if (!editor || !activeTab) return;
-
-		try {
-			const content = editor.getValue();
-			await writeTextFile(activeTab.path, content);
-			editorStore.setTabDirty(activeTab.id, false);
-		} catch (error) {
-			console.error(`Error saving file:`, error);
-		}
-	}
-
-	function getLanguageFromPath(path: string): string {
-		const extension = path.split('.').pop()?.toLowerCase();
-		const languageMap: Record<string, string> = {
-			ts: 'typescript',
-			tsx: 'typescript',
-			js: 'javascript',
-			jsx: 'javascript',
-			svelte: 'html',
-			vue: 'html',
-			json: 'json',
-			html: 'html',
-			css: 'css',
-			scss: 'scss',
-			less: 'less',
-			py: 'python',
-			rs: 'rust',
-			go: 'go',
-			java: 'java',
-			cpp: 'cpp',
-			c: 'c',
-			php: 'php',
-			rb: 'ruby',
-			sql: 'sql',
-			xml: 'xml',
-			yaml: 'yaml',
-			yml: 'yaml',
-			sh: 'shell',
-			bash: 'shell',
-			dockerfile: 'dockerfile',
-			md: 'markdown',
+		return () => {
+			saveCurrentScrollPosition();
+			editor?.dispose();
+			shortcuts?.destroy();
 		};
-
-		return languageMap[extension || ''] || 'plaintext';
-	}
+	});
 </script>
 
-<div class="flex flex-col h-full bg-gray-950">
+<div class="flex flex-col h-full bg-background">
 	<EditorTabs />
-
-	<div
-		class="flex items-center justify-between border-b border-gray-700 px-4 py-2 bg-gray-900"
-	>
-		{#if activeTab}
-			<span class="text-sm text-gray-400">{activeTab.name}</span>
-			<button
-				onclick={saveFile}
-				class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded text-white"
-			>
-				Save
-			</button>
-		{:else}
-			<span class="text-sm text-gray-500">No file selected</span>
-		{/if}
-	</div>
-
 	<div bind:this={editorContainer} class="flex-1" class:hidden={!activeTab}>
 	</div>
 

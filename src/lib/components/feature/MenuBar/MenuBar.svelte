@@ -5,7 +5,8 @@
     import {X, Minus, Square} from "@lucide/svelte"
 
     import {getCurrentWindow, Window} from "@tauri-apps/api/window";
-    import {onMount} from "svelte";;
+    import {onMount} from "svelte";
+		import { toggleMode } from 'mode-watcher';
 
     let appWindow : Window;
 
@@ -27,8 +28,8 @@
     }
 </script>
 
-<div class="bg-sidebar-background border-b" data-tauri-drag-region>
-    <div class="flex items-center justify-between gap-4">
+<div class="bg-background border-b" data-tauri-drag-region>
+    <div class="flex items-center justify-between gap-4 pr-2">
         <div class="flex items-center gap-4 px-4 py-2">
             <img src="/logo/svide.svg" alt="svide" class="h-6 w-6" />
 
